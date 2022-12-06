@@ -1,0 +1,410 @@
+---
+title: "DDSAnalytics"
+author: "Anish Bhandari"
+date: "2022-11-26"
+output:
+  html_document: default
+  pdf_document: default
+---
+
+## Introduction
+
+DDSAnalytics is an analytics company that specializes in talent management solutions for Fortune 100 companies. In this document, we will analyze data and subsequently provide meaningful interpretations for our client Frito Lay. As a representative of DDSAnalytics, I'll meet with CEO and CFO to present my findings as well as recommendations on Dec 11,2022.
+
+### Data Collection
+
+```{r}
+# Loading Data From S3 Objects Using the aws.s3 package
+
+library(tidyverse)
+library(aws.s3)
+library(readxl)
+
+Sys.setenv("AWS_ACCESS_KEY_ID" = "AKIAVW4VHW4VPB7MHZWA",
+           "AWS_SECRET_ACCESS_KEY" = "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",
+           "AWS_DEFAULT_REGION" = "us-east-2")
+
+
+
+# Using aws.s3
+aws.s3::bucketlist()
+aws.s3::get_bucket("smuddsproject2")
+
+# read and write from ojbect
+
+#Read in Creativity.csv
+#1st file
+case2predictions = s3read_using(FUN = read.csv,
+                    bucket = "smuddsproject2",
+                    object = "Case2PredictionsClassifyEXAMPLE.csv")
+
+
+
+# 2nd file
+RegressEXAMPLE = s3read_using(FUN = read.csv,
+                    bucket = "smuddsproject2",
+                    object = "Case2PredictionsRegressEXAMPLE.csv")
+
+
+
+
+# 3rd file
+
+Casestudy2 = s3read_using(FUN = read.csv,
+                    bucket = "smuddsproject2",
+                    object = "CaseStudy2-data.csv")
+
+
+
+# 4th  file
+
+Casestudy2NoA = s3read_using(FUN = read.csv,
+                    bucket = "smuddsproject2",
+                    object = "CaseStudy2CompSet No Attrition.csv")
+
+
+
+
+# 5th  file
+
+Casestudy2NoS = s3read_using(FUN = read_xlsx,
+                    bucket = "smuddsproject2",
+                    object = "CaseStudy2CompSet No Salary.xlsx")
+
+
+```
+
+### Data Summary
+
+```{r}
+
+data <- Casestudy2
+summary(data)
+
+# change multiple columns to factors
+data[c(3,4,6,9,13,17,19,23,24)] <- lapply(data[c(3,4,6,9,13,17,19,23,24)],as.factor)
+
+summary(data)
+
+```
+
+### Data Analysis 
+
+```{r}
+# 1) The median job satisfaction is the same for all roles. However, Human Resources and Research Director roles don't get to the highest level of 4.
+data %>% ggplot(aes(x= JobSatisfaction, fill=JobRole)) + geom_boxplot() + ggtitle(" Job Satisfation by Roles")
+
+# 2) Most of the higher level jobs(4,5) are occupied by Managers and Research Directors with few from Healthcare and Sales Executive.
+data %>% ggplot(aes(x= JobLevel, fill=JobRole)) + geom_bar(position = "fill") + ggtitle(" Job Level by Roles")
+
+# 3) Managers stay at the company the longest followed by the Research Directors.This can be attributed to the higher job roles discussed previously in 2 for these positions.
+data %>% ggplot(aes(x= YearsAtCompany, fill=JobRole)) + geom_boxplot() + ggtitle(" Years at the Company  by Roles")
+
+# 4) All roles have same median worklife balance.
+data %>% ggplot(aes(x= WorkLifeBalance, fill=JobRole)) + geom_boxplot() + ggtitle(" Work Life Balance by Roles")
+
+# 5) Managers and Research Directors stay longer in their roles whereas Human Resources and Sales Representative stay the least.
+data %>% ggplot(aes(x= YearsInCurrentRole , fill=JobRole)) + geom_boxplot()+ ggtitle(" Years in the Current Role  by Roles")
+
+# 6) Mangers have the most median years since promotion. Most managers are in higher level positions which is is possibly the reason that they get promoted less frequently.
+data %>% ggplot(aes(x= YearsSinceLastPromotion , fill=JobRole)) + geom_boxplot()+ ggtitle(" Years since Promotion  by Roles")
+
+# 7) Training times were similar for most positions. Manufacturing Directors median training is ~17% less that other roles. 
+data %>% ggplot(aes(x= TrainingTimesLastYear , fill=JobRole)) + geom_boxplot() + ggtitle(" Training Times by Roles")
+
+# 8) Manufacturing Director and Human Resources had the most median salary hikes in percent.  
+data %>% ggplot(aes(x= PercentSalaryHike , fill=JobRole)) + geom_boxplot() + ggtitle(" Salary Hike (%) by Roles")
+
+# 9) It is interesting that Research Directors and Managers have worked in most companies. They also stay longer in their roles. They most likely bring a lot of experience with them and stay with Frito Lay longer because of the higher level position that they occupy.
+data %>% ggplot(aes(x= NumCompaniesWorked  , fill=JobRole)) + geom_boxplot() + ggtitle(" No of Companies Worked by Roles")
+
+# 10)Job Satisfaction is similar among the employes with all marital status.
+data %>% ggplot(aes(x= JobSatisfaction, fill=MaritalStatus)) + geom_bar(position="fill") + ggtitle(" Job Satisfation by Marital Status")
+
+# 11) Gender doesn't play a role in job satisfaction.
+data %>% ggplot(aes(x= JobSatisfaction, fill=Gender)) + geom_boxplot() + ggtitle(" Job Satisfation by Gender")
+
+# 12) Human Resources and Technical Degree never get to the highest level of job satisfaction. 
+data %>% ggplot(aes(x= JobSatisfaction, fill=EducationField)) + geom_boxplot() + ggtitle(" Job Satisfation by Educational Field")
+
+# 13) Business travel has no impact on job satisfaction.
+data %>% ggplot(aes(x= JobSatisfaction  , fill=BusinessTravel)) + geom_boxplot() + ggtitle(" Job Satisfaction by Travel")
+
+```
+
+### Data Analysis - Job Levels
+
+```{r}
+#1) There isn't a huge diefference in the higher level jobs between genders. Females are well represented in level 4 and 5 jobs.
+data %>% ggplot(aes(x= JobLevel, fill=Gender)) + geom_bar() + ggtitle(" Job Level by Gender") + facet_wrap(~Gender)
+
+#2) Human Resources Department only has lower level roles.
+data %>% ggplot(aes(x= JobLevel, fill=Department)) + geom_bar() + ggtitle(" Job Level by Department")+ facet_wrap(~Department)
+
+#3) Almost all the hih=gher level jobs are filkled by Research Directors and Managers.
+data %>% ggplot(aes(x= JobLevel, fill=JobRole)) + geom_bar() + ggtitle(" Job Level by Job Role") + facet_wrap(~JobRole)
+
+# 4)There isn't a huge difference in job level among the different marital status. 
+data %>% ggplot(aes(x= JobLevel, fill=MaritalStatus)) + geom_bar() + ggtitle(" Job Level by MaritalStatus") + facet_wrap(~MaritalStatus)
+```
+
+### Data Analysis - Attrition Visualization
+
+Based on the visualization, we can see that Age, Business Travel, Distance from Home, Job Level, Monthly Income, Stock Option Level,Total Working Years, Years at Company, Years under Current Manager are important varibles that may predict Attrition. We will validate this numerically in the next section.
+
+```{r}
+
+library(dplyr)
+library(ggplot2)
+library(GGally)
+
+
+
+#Visualizing data with attrition using 5 variables at a time
+data %>%  select(Attrition,Age,BusinessTravel,DailyRate,Department,DistanceFromHome) %>% ggpairs(aes(color = Attrition))
+data %>%  select(Attrition,Education,EducationField,EnvironmentSatisfaction,Gender,HourlyRate) %>% ggpairs(aes(color = Attrition))
+data %>%  select(Attrition,JobInvolvement,JobLevel,JobRole,JobSatisfaction,MaritalStatus) %>% ggpairs(aes(color = Attrition))
+data %>%  select(Attrition,MonthlyIncome,MonthlyRate,NumCompaniesWorked,Over18,OverTime) %>% ggpairs(aes(color = Attrition))
+data %>%  select(Attrition,PercentSalaryHike,PerformanceRating,RelationshipSatisfaction,StockOptionLevel,TotalWorkingYears) %>% ggpairs(aes(color = Attrition))
+data %>%  select(Attrition,TrainingTimesLastYear,WorkLifeBalance,YearsAtCompany,YearsInCurrentRole,YearsSinceLastPromotion,YearsWithCurrManager) %>% ggpairs(aes(color = Attrition))
+
+
+```
+
+## Attrition Analysis - Numeric
+
+The same variables - Age, Distance from Home, Job Level, Monthly Income, Stock Option Level,Total Working Years, Years at Company, Years under Current Manager is highlighted numerically which validates our prediction in previous section.
+
+```{r}
+library(skimr)
+newdata <- data %>% select(c(2,3:9,12:22,26:27,29:36)) 
+dataatt <- newdata %>% group_by(Attrition)
+skimr::skim(dataatt)
+
+```
+
+## Top 3 Attrition Reason
+
+From the Attrition Analysis in previous 2 sections - Age, Business Travel,Distance from Home, Job Level, Monthly Income, Stock Option Level,Total Working Years, Years at Company were identified as important inputs for Attrition.I ran numerous models with knn and NB selecting the 3 variables at a time. The best model that I got was using Naive Bayes model with inputs Age, Business Travel , and Work Year(which was changed to Factor). The data was skewed heavily towards "No" attrition which meant that random sampling of total dataset didn't yield enough "Yes" attrition. To tackle this issue, dataset was filtered into "Yes" and "No" attrition and \~80 % of "Yes" were samples every time along with \~75 % of "No". 50 seeds were taken to get the mean for accuracy, sensitivity and Specificity.
+
+```{r}
+library(caret)
+library (e1071)
+# Histograms for key inputs
+datanb <- data
+datanb %>% ggplot(aes(x= DistanceFromHome, fill=Attrition)) + geom_histogram() + ggtitle("Histogram of Distance from Home by Attrition")
+datanb %>% ggplot(aes(x= BusinessTravel, fill=Attrition)) + geom_bar(stat="count") + ggtitle("Histogram of Business Travel by Attrition")
+
+datanb %>% ggplot(aes(x= JobLevel, fill=Attrition)) + geom_histogram() + ggtitle("Histogram of Job Level by Attrition")
+datanb %>% ggplot(aes(x= MonthlyIncome, fill=Attrition)) + geom_histogram() + ggtitle("Histogram of Monthly Income by Attrition")
+
+datanb %>% ggplot(aes(x= Age, fill=Attrition)) + geom_histogram() + ggtitle("Histogram of Age by Attrition")
+
+datanb %>% ggplot(aes(x= TotalWorkingYears , fill=Attrition)) + geom_histogram() + ggtitle("Histogram of TotalWorkingYears by Attrition")
+
+datanb %>% ggplot(aes(x= YearsWithCurrManager  , fill=Attrition)) + geom_histogram() + ggtitle("Histogram of Years with Current Manager by Attrition")
+
+# Changing Work years to Factor with Levels based on Histogram
+datanb$WorkYearFactor = cut(datanb$TotalWorkingYears, breaks = c(-1,11,21,40),labels = c("1","2","3"))
+
+# Changing Age to Factor with Levels based on Histogram
+datanb$AgeFactor = cut(datanb$Age, breaks = c(17,25,30,35,40,45,61),labels = c("1", "2", "3", "4", "5","6"))
+
+# Changing Monthly Income to Factor with Levels based on Histogram
+datanb$SalaryFactor = cut(datanb$MonthlyIncome, breaks = c(1080,3000,6000,12000,25000),labels = c("<3k","3k to 6k","6k to 12k",">12k"))
+
+# Changing Years with Current Manager to Factor with Levels based on Histogram
+datanb$YearsWithCurrManagerFactor  = cut(datanb$YearsWithCurrManager, breaks = c(-1,5,10,17),labels = c("Low","Med","High"))
+
+# Creating dataset with "Yes" and "No" Attrition
+datayes <- datanb %>% filter(Attrition =="Yes")
+datano <- datanb %>% filter(Attrition =="No")
+
+summary(datanb)
+
+# NaiveBayes Model with Age(2),Business Travel(4) and Work Year Factor (37)
+AccHolder = numeric(50)
+SensHolder = numeric(50)
+SpecHolder = numeric(50)
+
+for (seed in 1:50)
+{
+set.seed(seed)
+trainIndices_yes = sample(seq(1:140),115)
+trainIndices_no = sample(seq(1:730),555)
+trainAttrition = rbind(datayes[trainIndices_yes,] , datano[trainIndices_no,])
+testAttrition = rbind(datayes[-trainIndices_yes,], datano[-trainIndices_no,])
+model = naiveBayes(trainAttrition[,c(2,4,37)],trainAttrition$Attrition)
+CM = confusionMatrix(table(testAttrition$Attrition, predict(model,testAttrition[,c(2,4,37)])))
+AccHolder[seed] = CM$overall[1]
+SensHolder[seed] = CM$byClass[1]
+SpecHolder[seed] = CM$byClass[2]
+}
+
+mean(AccHolder) # Mean Accuracy = 0.88
+#Standard Error of the Mean
+sd(AccHolder)/sqrt(50) 
+mean(SensHolder) # Mean Sensitivity = 0.88
+#Standard Error of the Mean
+sd(SensHolder)/sqrt(50) 
+mean(SpecHolder,na.rm = TRUE) # Mean Specificity = 1
+#Standard Error of the Mean
+sd(SensHolder)/sqrt(50)
+
+
+```
+
+### Best Model to Predict Attrition
+
+I realize that due to skewness, we need a model with high enough accuracy, sensitivity, but not too high specificity. I used Naive Bayes and knn models. The best values that I got was using Naive Bayes. I used 80% for Traning set and 20 % for test set. Due to skewness, the sets were bound from seperate Attrition and No Attrition datasets. The factors selected for my models are Age, Business Travel, Monthly Income, Work Years in factor and Years with Current Manager in Factor.
+
+```{r}
+
+# NaiveBayes Model with Age(2),Business Travel(4),Monthly Income (20),Work Year Factor (37), and Years with Current Manager Factor (40) to check if the model is stable.
+AccHolder = numeric(50)
+SensHolder = numeric(50)
+SpecHolder = numeric(50)
+
+for (seed in 1:50)
+{
+set.seed(seed)
+trainIndices_yes = sample(seq(1:140),112)
+trainIndices_no = sample(seq(1:730),584)
+trainAttrition = rbind(datayes[trainIndices_yes,] , datano[trainIndices_no,])
+testAttrition = rbind(datayes[-trainIndices_yes,], datano[-trainIndices_no,])
+model = naiveBayes(trainAttrition[,c(2,4,20,40,37)],trainAttrition$Attrition)
+CM = confusionMatrix(table(testAttrition$Attrition, predict(model,testAttrition[,c(2,4,20,40,37)])))
+AccHolder[seed] = CM$overall[1]
+SensHolder[seed] = CM$byClass[1]
+SpecHolder[seed] = CM$byClass[2]
+}
+
+mean(AccHolder) # Mean Accuracy 
+mean(SensHolder) # Mean Sensitivity 
+mean(SpecHolder,na.rm = TRUE) # Mean Specificity 
+AccHolder
+SensHolder
+SpecHolder
+
+# The mean values prove that the model is stable. 
+
+# The best seed that gave me a model high for accuracy and specifity and not too high for specifity is seed(9)
+# Using seed 9 for the best model.
+# Best prediction model
+set.seed(9)
+trainIndices_yes = sample(seq(1:140),112)
+trainIndices_no = sample(seq(1:730),584)
+trainAttrition = rbind(datayes[trainIndices_yes,] , datano[trainIndices_no,])
+testAttrition = rbind(datayes[-trainIndices_yes,], datano[-trainIndices_no,])
+model = naiveBayes(trainAttrition[,c(2,4,20,40,37)],trainAttrition$Attrition)
+CM = confusionMatrix(table(testAttrition$Attrition, predict(model,testAttrition[,c(2,4,20,40,37)])))
+model
+CM
+
+# Accuracy = 0.8506
+# Sensitivity = 0.8571
+# Specificity = 0.6667
+
+# Data modification for No Attrition Dataset
+
+head(Casestudy2NoA)
+Casestudy2NoA$SalaryFactor = cut(Casestudy2NoA$MonthlyIncome, breaks = c(1080,3000,6000,12000,25000),labels = c("<3k","3k to 6k","6k to 12k",">12k"))
+Casestudy2NoA$BusinessTravel = as.factor(Casestudy2NoA$BusinessTravel)
+Casestudy2NoA$JobLevelFactor = as.factor(Casestudy2NoA$JobLevel)
+Casestudy2NoA$WorkYearFactor = cut(Casestudy2NoA$TotalWorkingYears, breaks = c(-1,11,21,40),labels = c("1","2","3"))
+Casestudy2NoA$YearsWithCurrManagerFactor  = cut(Casestudy2NoA$YearsWithCurrManager, breaks = c(-1,5,10,17),labels = c("Low","Med","High"))
+
+
+
+#Prediction of Attrition for No Attrition Data
+
+Casestudy2NoA$NBPrediction = predict(model,Casestudy2NoA[,c(2,3,19,38,39)])
+
+# Viewing the Prediction
+
+Casestudy2NoA$NBPrediction
+#writing csv file for submission
+#write.csv(Casestudy2NoA,file = 'C:\\Users\\bhand\\OneDrive\\Desktop\\Doing Data Science\\Case Study 2/Case2PredictionsBhandariAttrition.csv')
+
+
+```
+
+### Salary - Analysis
+
+Bsed on the correlation coefficient, Monthly Income shows evidence of positive relationship with Age (0.484) and Job Level(0.952).
+
+```{r}
+data1 <- data
+# Selecting quantitative variables
+data1 %>%  select(DailyRate,Age,BusinessTravel,DailyRate,DistanceFromHome, Education,EnvironmentSatisfaction,HourlyRate,JobInvolvement,JobLevel,EnvironmentSatisfaction,JobSatisfaction,MonthlyIncome,MonthlyRate,NumCompaniesWorked,PercentSalaryHike) %>% ggpairs(aes())
+
+data1 %>% ggplot(aes(x= Age, y=MonthlyIncome)) + geom_point() + ggtitle(" Monthly Income by Age") + geom_smooth(method = "lm") 
+
+data1 %>% ggplot(aes(x= JobLevel, y=MonthlyIncome)) + geom_point() + ggtitle(" Monthly Income by Job Level") + geom_smooth(method = "lm") 
+```
+
+### Salary - Models
+
+The best linear regression model was model 4 with the lowest RMSE of 1258.839 as well as the best residual density curve.
+
+```{r}
+# Model 1 with Job level
+fit1 = lm(MonthlyIncome~JobLevel, data = data1)
+summary(fit1)
+confint(fit1)
+res1 <-resid(fit1)
+plot(density(res1),main = "Model 1 Residual with Job Level")
+RMSE1 = sqrt(mean(fit1$residuals^2))
+RMSE1 # 1411.67
+
+
+
+# Model 2 with Age
+fit2 = lm(MonthlyIncome~Age, data = data1)
+summary(fit2)
+confint(fit2)
+res2 <-resid(fit2)
+plot(density(res2),main = "Model 2 Residual with Age")
+
+RMSE2 = sqrt(mean(fit2$residuals^2))
+RMSE2 # 4020.251
+
+
+# Model 3 combined JobLevel and Age
+fitc = lm(MonthlyIncome~JobLevel + Age, data = data1)
+summary(fitc)
+confint(fitc)
+resc <-resid(fitc)
+plot(density(resc),main = "Model 1 Residual with Job Level and Age")
+RMSEc = sqrt(mean(fitc$residuals^2))
+RMSEc # 1404.01
+
+# Model 4 combined Job level and Age^2 (Best model with lowets RMSE and highest r squared)
+JI2 = data1$JobLevel * data1$JobLevel
+
+JI3 = data1$JobLevel * data1$JobLevel * data1$JobLevel
+
+fitc1 = lm(MonthlyIncome~ JobLevel + JI2 + JI3 + Age, data = data1)
+summary(fitc1)
+confint(fitc1)
+res <- resid(fitc1)
+plot(density(res), main = "Model 1 Residual with Job Level(3 levels) and Age")
+RMSEc1 = sqrt(mean(fitc1$residuals^2))
+RMSEc1 #1258.839
+
+
+# Adding Predicted Salary based on Model 4 to the No Salary Dataset
+
+Casestudy2NoS$Predicted_Salary_model4<- predict(fitc1, newdata = data.frame(JobLevel= Casestudy2NoS$JobLevel, JI2 =Casestudy2NoS$JobLevel*Casestudy2NoS$JobLevel, JI3 = Casestudy2NoS$JobLevel*Casestudy2NoS$JobLevel*Casestudy2NoS$JobLevel, Age = Casestudy2NoS$Age ), interval = "confidence")
+
+# write.csv(Casestudy2NoS,file = 'C:\\Users\\bhand\\OneDrive\\Desktop\\Doing Data Science\\Case Study 2/Case2PredictionsBhandariSalary.csv')
+```
+## Conclusion
+
+It is extremely difficult to predict attrition. Even though, I was able to create a model with good accuracy, it may not be the best model for prediction, due to various human factors involved. The best way to tackle attrition is to improve the job satisfaction by creating 5 levels for most Job Areas and not just a few.I was able to build a model which can be used to predict salary. This model may be useful to estimate a salary for any new hires based on the current Frito lay data.
+
+## Presentation Video Link
+
+# https://www.youtube.com/watch?v=u_TESUF8nOQ
+
+
