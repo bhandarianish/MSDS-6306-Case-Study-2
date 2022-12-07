@@ -27,7 +27,9 @@ DDSAnalytics is an analytics company that specializes in talent management solut
 - rshiny
 https://bhandarianish.shinyapps.io/FritoLay/
 - youtube video
-https://www.youtube.com/watch?v=u_TESUF8nOQ          
+https://www.youtube.com/watch?v=u_TESUF8nOQ  
+
 -my profile
-bhandarianish.github.io 
+bhandarianish.github.io
+
 
